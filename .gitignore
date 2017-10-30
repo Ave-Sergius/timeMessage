@@ -1,0 +1,10 @@
+# IDE
+.idea
+
+# Dependency directory
+node_modules
+
+# log directory
+logs
+*/**/*.log
+*/**/*.logs

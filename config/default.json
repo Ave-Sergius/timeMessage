@@ -7,6 +7,6 @@
     "maxReconnectionTimes": 10,
     "maxIntervalCountToCheckConnection": 10,
     "intervalTimeToCheckConnection": 100,
-    "subscriptionChannelName": "timeMessage"
+    "channelName": "timeMessage"
   }
 }

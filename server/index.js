@@ -9,7 +9,7 @@ const timeMessageController = require('../controllers').timeMessage;
 const app = express();
 app.use(bodyParser.json());
 
-app.post('/time-message', (req, res) => {
+app.post('/echoAtTime', (req, res, next) => {
     const reg = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z/i;
     if (!req.body) {
         return res.sendStatus(400);
@@ -23,13 +23,12 @@ app.post('/time-message', (req, res) => {
         return res.status(400).send({ message: 'Message is not correct'});
     }
 
-    // async
-    timeMessageController.setTimeMessage(req.body);
-
-    res.send({
-        time: req.body.time,
-        message: req.body.message
-    })
+    timeMessageController.setTimeMessage(req.body.time, req.body.message, config.get('redis.channelName')).then(() => {
+        res.send({
+            time: req.body.time,
+            message: req.body.message
+        })
+    }).catch(next);
 });
 
 app.use((req, res, next) => {

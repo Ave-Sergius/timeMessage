@@ -1,3 +1,3 @@
 Default port 3000
-POST /time-message
+POST /echoAtTime
 { time: ISO Date, message: string}

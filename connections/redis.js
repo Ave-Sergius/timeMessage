@@ -17,6 +17,7 @@ class RedisConnection {
         this.maxReconnectionTimes = maxReconnectionTimes;
         this.maxIntervalCount = maxIntervalCountToCheckConnection;
         this.intervalTimeToCheckConnection = intervalTimeToCheckConnection;
+        this.subscribes = [];
     }
 
     connect() {
@@ -84,6 +85,49 @@ class RedisConnection {
         client.on('reconnecting', error => {
             this.logger.info(`Redis ${this.dbConnectionUrl} - connection it trying to reconnect ${error.attempt}`);
         });
+    }
+
+    del(key) {
+        return this.client.delAsync(key);
+    }
+
+    sadd(key, member) {
+        return this.client.saddAsync(key, member);
+    }
+
+    smembers(key) {
+        return this.client.smembersAsync(key);
+    }
+
+    zadd(key, score, member, options = {}) {
+        const args = [key];
+
+        if (options.NX) {
+            args.push('NX');
+        }
+        args.push(score);
+        args.push(member);
+
+        return this.client.zaddAsync(args);
+    }
+
+    srem(key, member) {
+        return this.client.sremAsync(key, member);
+    }
+
+    subscribe(channelName, cb) {
+        return this.client.subscribeAsync(channelName).then(() => {
+            this.client.on('message', (channel, message) => {
+                if (channel === channelName) {
+                    console.log("sub channel " + channel + ": " + message);
+                    cb(message);
+                }
+            });
+        });
+    }
+
+    publish(channelName, message) {
+        return this.client.publishAsync(channelName, message);
     }
 }
 

@@ -2,6 +2,7 @@
 
 const redisConnection = require('./connections').redis;
 const logger = require('./helpers').logger;
+const timeMessageController = require('./controllers').timeMessage;
 const config = require('config');
 
 process.on('SIGINT', () => {
@@ -23,10 +24,7 @@ process.on('SIGTERM', () => {
 Promise.resolve().then(() => {
     return redisConnection.connect();
 }).then(() => {
-
-
-
-
+    // timeMessageController.subscribe(config.get('redis.channelName'));
 }).then(() => {
     require('./server');
 }).catch(error => {

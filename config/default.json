@@ -5,8 +5,6 @@
   "redis": {
     "connectionUrl": "redis://localhost:6379",
     "maxReconnectionTimes": 10,
-    "maxIntervalCountToCheckConnection": 10,
-    "intervalTimeToCheckConnection": 100,
     "prefixName": "timeMessage"
   }
 }

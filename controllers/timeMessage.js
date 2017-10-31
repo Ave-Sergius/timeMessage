@@ -1,10 +1,12 @@
 'use strict';
 
-const redisDao = require('../daos').redis;
+const RedisDao = require('../daos').Redis;
 const schedule = require('node-schedule');
 
 class TimeMessageController {
-    constructor() {}
+    constructor(options = {}) {
+        this.redisDao = options.redisDao || new RedisDao();
+    }
 
     newTimeMessageHandler() {
         return redisDao.setNewTimeMessage().then(timeIso => {
@@ -27,11 +29,11 @@ class TimeMessageController {
     }
 
     setTimeMessage(timeIso, message) {
-        return redisDao.initNewTimeMessage(timeIso, message);
+        return this.redisDao.initNewTimeMessage(timeIso, message);
     }
 
     processUnresolvedTimeMessages(borderScore) {
-        return redisDao.getUnresolvedTimeMessages(borderScore).then(messages => {
+        return this.redisDao.getUnresolvedTimeMessages(borderScore).then(messages => {
             if (Array.isArray(messages)) {
                 messages.forEach(message => this.messageHandler(message));
             }

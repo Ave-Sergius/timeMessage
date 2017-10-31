@@ -6,7 +6,7 @@ const config = require('config');
 class RedisDao {
     constructor(options = {}) {
         this.redis = new RedisConnection();
-        this.prefixName = options.prefixName || config.get('redis.prefixName')
+        this.prefixName = options.prefixName || config.get('redis.prefixName');
     }
 
     init() {
@@ -49,6 +49,25 @@ class RedisDao {
             return this.redis.zrem(`${this.prefixName}:sortedSet`, key);
         }).then(() => {
             return members;
+        });
+    }
+
+    getUnresolvedTimeMessages(borderScore) {
+        let sortedKeys;
+        return this.redis.zrangebyscore(`${this.prefixName}:sortedSet`, 0, borderScore).then(_sortedKeys => {
+            sortedKeys = _sortedKeys;
+            if (!Array.isArray(sortedKeys) || !sortedKeys.length) {
+                return;
+            }
+
+            // async
+            this.redis.zremrangebyscore(`${this.prefixName}:sortedSet`, 0, borderScore);
+
+            const promises = sortedKeys.map(sortedKey => this.redis.smembers(sortedKey).then(members => {
+                return this.redis.del(sortedKey).then(() => members);
+            }));
+
+            return Promise.all(promises);
         });
     }
 }

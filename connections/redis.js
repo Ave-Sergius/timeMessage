@@ -94,6 +94,14 @@ class RedisConnection {
         return this.client.zremAsync(key, member);
     }
 
+    zrangebyscore(key, minScore, maxScore) {
+        return this.client.zrangebyscoreAsync(key, minScore, maxScore);
+    }
+
+    zremrangebyscore(key, minScore, maxScore) {
+        return this.client.zremrangebyscore(key, minScore, maxScore);
+    }
+
     // list
     lpush(key, value) {
         return this.client.lpushAsync(key, value);
@@ -116,6 +124,12 @@ class RedisConnection {
 
     publish(channelName, message) {
         return this.client.publishAsync(channelName, message);
+    }
+
+    // transactions
+
+    multi(...functions) {
+        return Promise.resolve();
     }
 
     _setEvenHandlers(client) {

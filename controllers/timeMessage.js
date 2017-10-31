@@ -29,6 +29,14 @@ class TimeMessageController {
     setTimeMessage(timeIso, message) {
         return redisDao.initNewTimeMessage(timeIso, message);
     }
+
+    processUnresolvedTimeMessages(borderScore) {
+        return redisDao.getUnresolvedTimeMessages(borderScore).then(messages => {
+            if (Array.isArray(messages)) {
+                messages.forEach(message => this.messageHandler(message));
+            }
+        });
+    }
 }
 
 module.exports = new TimeMessageController();

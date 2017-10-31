@@ -30,6 +30,8 @@ Promise.resolve().then(() => {
     return redisConnection.subscribe(`${config.get('redis.prefixName')}:event`,
         timeMessageController.newTimeMessageHandler.bind(timeMessageController));
 }).then(() => {
+    return timeMessageController.processUnresolvedTimeMessages((new Date()).valueOf());
+}).then(() => {
     require('./server');
 }).catch(error => {
     logger.error(error.message, () => {

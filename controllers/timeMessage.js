@@ -9,13 +9,13 @@ class TimeMessageController {
     }
 
     newTimeMessageHandler() {
-        return redisDao.setNewTimeMessage().then(timeIso => {
+        return this.redisDao.setNewTimeMessage().then(timeIso => {
             if (!timeIso) {
                 return;
             }
 
             schedule.scheduleJob(new Date(timeIso), () => {
-                return redisDao.handleNewTimeMessage(timeIso).then(messages => {
+                return this.redisDao.handleNewTimeMessage(timeIso).then(messages => {
                     if (Array.isArray(messages)) {
                         messages.forEach(message => this.messageHandler(message));
                     }

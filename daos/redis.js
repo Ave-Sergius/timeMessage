@@ -5,7 +5,7 @@ const redis = require('redis');
 const bluebird = require('bluebird');
 bluebird.promisifyAll(redis.RedisClient.prototype);
 bluebird.promisifyAll(redis.Multi.prototype);
-const BaseError = require('../errors').BaseError;
+const errors = require('../errors');
 const logger = require('../helpers').logger;
 
 class RedisDao {
@@ -20,11 +20,11 @@ class RedisDao {
             url: this.dbConnectionUrl,
             retry_strategy: options => {
                 if (options.error.code === 'ECONNREFUSED') {
-                    return new BaseError(options.error.message);
+                    return new errors.BaseError(options.error.message);
                 }
 
                 if (options.times_connected > (this.maxReconnectionTimes || +Infinity)) {
-                    return new BaseError(`Redis connection error, Max time of reconnection ${options.times_connected}`);
+                    return new errors.BaseError(`Redis connection error, Max time of reconnection ${options.times_connected}`);
                 }
 
                 return Math.min(options.attempt * 100, 3000);
@@ -67,16 +67,16 @@ class RedisDao {
     }
 
     initNewTimeMessage(key, message) {
-        return this.client.saddAsync(`${this.prefixName}:${key}`, message).then(() => {
-            return this.client.lpushAsync(`${this.prefixName}:list`, key);
-        }).then(() => {
-            return this.client.publishAsync(`${this.prefixName}:event`, key);
-        });
+        return this.client.multi()
+            .sadd(`${this.prefixName}:${key}`, message)
+            .lpush(`${this.prefixName}:list`, key)
+            .publish(`${this.prefixName}:event`, key)
+            .execAsync();
     }
 
-    setNewTimeMessage(key) {
+    setNewTimeMessage() {
         let timeIso;
-        return this.client.lpopAsync(`${this.prefixName}:list`, key).then(_timeIso => {
+        return this.client.lpopAsync(`${this.prefixName}:list`).then(_timeIso => {
             timeIso = _timeIso;
 
             if (!timeIso) {
@@ -90,15 +90,14 @@ class RedisDao {
     }
 
     handleNewTimeMessage(key) {
-        let members;
-        return this.client.smembersAsync(`${this.prefixName}:${key}`).then(_members => {
-            members = _members;
-            return this.client.delAsync(`${this.prefixName}:${key}`);
-        }).then(() => {
-            return this.client.zremAsync(`${this.prefixName}:sortedSet`, key);
-        }).then(() => {
-            return members;
-        });
+        return this.client.multi()
+            .smembers(`${this.prefixName}:${key}`)
+            .del(`${this.prefixName}:${key}`)
+            .zrem(`${this.prefixName}:sortedSet`, key)
+            .execAsync()
+            .then(results => {
+                return results[0];
+            });
     }
 
     getUnresolvedTimeMessages(borderScore) {
@@ -106,18 +105,24 @@ class RedisDao {
         return this.client.zrangebyscoreAsync(`${this.prefixName}:sortedSet`, 0, borderScore).then(_sortedKeys => {
             sortedKeys = _sortedKeys;
             if (!Array.isArray(sortedKeys) || !sortedKeys.length) {
+                throw new errors.NotFoundError();
+            }
+
+            return Promise.all(sortedKeys.map(sortedKey => this.client.smembersAsync(`${this.prefixName}:${sortedKey}`)));
+        }).then(results => {
+            const members = results.reduce((accumulator, currentValue) => accumulator.concat(currentValue), []);
+
+            const multi = this.client.multi();
+            sortedKeys.forEach(sortedKey => multi.del(`${this.prefixName}:${sortedKey}`));
+            multi.zremrangebyscore(`${this.prefixName}:sortedSet`, 0, borderScore);
+
+            return multi.execAsync().then(() => members);
+        }).catch(error => {
+            if (error instanceof errors.NotFoundError) {
                 return;
             }
 
-            // async
-            this.client.zremrangebyscoreAsync(`${this.prefixName}:sortedSet`, 0, borderScore);
-
-            const promises = sortedKeys.map(sortedKey => this.client.smembersAsync(sortedKey).then(members => {
-                return this.client.delAsync(sortedKey).then(() => members);
-            }));
-
-            return Promise.all(promises)
-                .then(results => results.reduce((accumulator, currentValue) => accumulator.concat(currentValue), []));
+            throw error;
         });
     }
 }

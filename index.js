@@ -8,7 +8,7 @@ const config = require('config');
 const redisListener = new RedisDao();
 
 process.on('SIGINT', () => {
-    Promise.all([redisListener.disconnect(), timeMessageController.redisDao.destroy()]).then(() => {
+    Promise.all([redisListener.disconnect(), timeMessageController.redisDao.disconnect()]).then(() => {
         logger.error('SIGINT', () => {
             process.exit(1);
         });
@@ -16,7 +16,7 @@ process.on('SIGINT', () => {
 });
 
 process.on('SIGTERM', () => {
-    Promise.all([redisListener.disconnect(), timeMessageController.redisDao.destroy()]).then(() => {
+    Promise.all([redisListener.disconnect(), timeMessageController.redisDao.disconnect()]).then(() => {
         logger.error('SIGTERM', () => {
             process.exit(1);
         });

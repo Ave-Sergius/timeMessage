@@ -4,6 +4,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const config = require('config');
 const errors = require('../errors');
+const logger = require('../helpers').logger;
 const timeMessageController = require('../controllers').timeMessage;
 const validationMiddleware = require('./middlewares').validation;
 
@@ -24,14 +25,14 @@ app.use((req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    logger.error(err.stack);
     const status = err.status || 500;
     const message = err.message || 'Server error';
-    res.status(status).send({ status, message})
+    res.status(status).send({ status, message })
 });
 
-app.listen(config.get('server.port'), function () {
-    console.log(`App listening on port ${config.get('server.port')}`)
+app.listen(process.env.PORT || config.get('server.port'), () => {
+    logger.info(`App listening on port ${config.get('server.port')}`)
 });
 
 module.exports = app;

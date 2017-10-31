@@ -1,23 +1,22 @@
 'use strict';
 
 const redisDao = require('../daos').redis;
-const utils = require('../helpers').utils;
 const schedule = require('node-schedule');
 
 class TimeMessageController {
     constructor() {}
 
     newTimeMessageHandler() {
-        return redisDao.handleNewTimeMessage().then(timeIso => {
+        return redisDao.setNewTimeMessage().then(timeIso => {
             if (!timeIso) {
                 return;
             }
 
             schedule.scheduleJob(new Date(timeIso), () => {
-                return redisDao.smembers(timeIso).then(messages => {
-                    console.log(messages);
-
-                    messages.forEach(message => this.messageHandler(message));
+                return redisDao.handleNewTimeMessage(timeIso).then(messages => {
+                    if (Array.isArray(messages)) {
+                        messages.forEach(message => this.messageHandler(message));
+                    }
                 });
             });
         });

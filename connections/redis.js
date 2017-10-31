@@ -59,6 +59,65 @@ class RedisConnection {
         return this.client.quitAsync();
     }
 
+    // general
+    del(key) {
+        return this.client.delAsync(key);
+    }
+
+    // set
+    sadd(key, member) {
+        return this.client.saddAsync(key, member);
+    }
+
+    srem(key, member) {
+        return this.client.sremAsync(key, member);
+    }
+
+    smembers(key) {
+        return this.client.smembersAsync(key);
+    }
+
+    // sorted set
+    zadd(key, score, member, options = {}) {
+        const args = [key];
+
+        if (options.NX) {
+            args.push('NX');
+        }
+        args.push(score);
+        args.push(member);
+
+        return this.client.zaddAsync(args);
+    }
+
+    zrem(key, member) {
+        return this.client.zremAsync(key, member);
+    }
+
+    // list
+    lpush(key, value) {
+        return this.client.lpushAsync(key, value);
+    }
+
+    lpop(key) {
+        return this.client.lpopAsync(key);
+    }
+
+    // publishing
+    subscribe(channelName, cb) {
+        return this.client.subscribeAsync(channelName).then(() => {
+            this.client.on('message', (channel, message) => {
+                if (channel === channelName) {
+                    cb(message);
+                }
+            });
+        });
+    }
+
+    publish(channelName, message) {
+        return this.client.publishAsync(channelName, message);
+    }
+
     _setEvenHandlers(client) {
         client.on('connect', () => {
             this.logger.info(`Redis ${this.dbConnectionUrl} - connected successfully`);
@@ -75,56 +134,6 @@ class RedisConnection {
         client.on('reconnecting', error => {
             this.logger.info(`Redis ${this.dbConnectionUrl} - connection it trying to reconnect ${error.attempt}`);
         });
-    }
-
-    del(key) {
-        return this.client.delAsync(key);
-    }
-
-    sadd(key, member) {
-        return this.client.saddAsync(key, member);
-    }
-
-    smembers(key) {
-        return this.client.smembersAsync(key);
-    }
-
-    zadd(key, score, member, options = {}) {
-        const args = [key];
-
-        if (options.NX) {
-            args.push('NX');
-        }
-        args.push(score);
-        args.push(member);
-
-        return this.client.zaddAsync(args);
-    }
-
-    srem(key, member) {
-        return this.client.sremAsync(key, member);
-    }
-
-    lpush(key, value) {
-        return this.client.lpushAsync(key, value);
-    }
-
-    lpop(key) {
-        return this.client.lpopAsync(key);
-    }
-
-    subscribe(channelName, cb) {
-        return this.client.subscribeAsync(channelName).then(() => {
-            this.client.on('message', (channel, message) => {
-                if (channel === channelName) {
-                    cb(message);
-                }
-            });
-        });
-    }
-
-    publish(channelName, message) {
-        return this.client.publishAsync(channelName, message);
     }
 }
 

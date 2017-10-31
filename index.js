@@ -1,12 +1,15 @@
 'use strict';
 
-const redisConnection = require('./connections').redis;
+const RedisConnection = require('./connections').Redis;
 const logger = require('./helpers').logger;
 const timeMessageController = require('./controllers').timeMessage;
+const redisDao = require('./daos').redis;
 const config = require('config');
 
+const redisConnection = new RedisConnection();
+
 process.on('SIGINT', () => {
-    redisConnection.disconnect().then(() => {
+    Promise.all([redisConnection.disconnect(), redisDao.destroy()]).then(() => {
         logger.error('SIGINT', () => {
             process.exit(1);
         });
@@ -14,7 +17,7 @@ process.on('SIGINT', () => {
 });
 
 process.on('SIGTERM', () => {
-    redisConnection.disconnect().then(() => {
+    Promise.all([redisConnection.disconnect(), redisDao.destroy()]).then(() => {
         logger.error('SIGTERM', () => {
             process.exit(1);
         });
@@ -22,9 +25,10 @@ process.on('SIGTERM', () => {
 });
 
 Promise.resolve().then(() => {
-    return redisConnection.connect();
+    return Promise.all([redisConnection.connect(), redisDao.init()]);
 }).then(() => {
-    // timeMessageController.subscribe(config.get('redis.channelName'));
+    return redisConnection.subscribe(`${config.get('redis.prefixName')}:event`,
+        timeMessageController.newTimeMessageHandler.bind(timeMessageController));
 }).then(() => {
     require('./server');
 }).catch(error => {

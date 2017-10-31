@@ -1,19 +1,24 @@
 'use strict';
 
-const redisConnection = require('../connections').redis;
+const redisDao = require('../daos').redis;
+const utils = require('../helpers').utils;
 const schedule = require('node-schedule');
 
 class TimeMessageController {
-    constructor() {
+    constructor() {}
 
-    }
+    newTimeMessageHandler() {
+        return redisDao.handleNewTimeMessage().then(timeIso => {
+            if (!timeIso) {
+                return;
+            }
 
-    addTimeHandler(timeISO) {
-        schedule.scheduleJob(new Date(timeISO), () => {
-            return redisConnection.smembers(timeISO).then(messages => {
-                console.log(messages);
+            schedule.scheduleJob(new Date(timeIso), () => {
+                return redisDao.smembers(timeIso).then(messages => {
+                    console.log(messages);
 
-                messages.forEach(message => this.messageHandler(message));
+                    messages.forEach(message => this.messageHandler(message));
+                });
             });
         });
     }
@@ -22,20 +27,8 @@ class TimeMessageController {
         console.log(message);
     }
 
-    setTimeMessage(timeISO, message, channelName) {
-        return redisConnection.sadd(timeISO, message).then(() => {
-            return redisConnection.zadd(channelName, (new Date(timeISO)).valueOf(), timeISO, { NX: true });
-        }).then(() => {
-            return redisConnection.publish(channelName, timeISO);
-        }).then(() => {
-            return redisConnection.srem(timeISO, message).then(result => {
-                console.log(result);
-            });
-        });
-    }
-
-    subscribe(channelName) {
-        return redisConnection.subscribe(channelName, this.addTimeHandler.bind(this))
+    setTimeMessage(timeIso, message) {
+        return redisDao.initNewTimeMessage(timeIso, message);
     }
 }
 

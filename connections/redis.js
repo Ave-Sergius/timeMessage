@@ -9,14 +9,15 @@ const config = require('config');
 const logger = require('../helpers').logger;
 
 class RedisConnection {
-    constructor(logger, dbConnectionUrl, maxReconnectionTimes, maxIntervalCountToCheckConnection,
-                intervalTimeToCheckConnection) {
+    constructor(options = {}) {
         this.client = null;
-        this.logger = logger;
-        this.dbConnectionUrl = dbConnectionUrl;
-        this.maxReconnectionTimes = maxReconnectionTimes;
-        this.maxIntervalCount = maxIntervalCountToCheckConnection;
-        this.intervalTimeToCheckConnection = intervalTimeToCheckConnection;
+        this.logger = options.logger || logger;
+        this.dbConnectionUrl = options.dbConnectionUrl || config.get('redis.connectionUrl');
+        this.maxReconnectionTimes = options.maxReconnectionTimes || config.get('redis.maxReconnectionTimes');
+        this.maxIntervalCount = options.maxIntervalCountToCheckConnection ||
+            config.get('redis.maxIntervalCountToCheckConnection');
+        this.intervalTimeToCheckConnection = options.intervalTimeToCheckConnection ||
+            config.get('redis.intervalTimeToCheckConnection');
         this.subscribes = [];
     }
 
@@ -25,16 +26,13 @@ class RedisConnection {
             url: this.dbConnectionUrl,
             retry_strategy: options => {
                 if (options.error.code === 'ECONNREFUSED') {
-                    // End reconnecting on a specific error and flush all commands with a individual error
                     return new BaseError(options.error.message);
                 }
 
                 if (options.times_connected > (this.maxReconnectionTimes || +Infinity)) {
-                    // End reconnecting with built in error
                     return new BaseError(`Redis connection error, Max time of reconnection ${options.times_connected}`);
                 }
 
-                // reconnect after
                 return Math.min(options.attempt * 100, 3000);
             }
         });
@@ -59,14 +57,6 @@ class RedisConnection {
 
     disconnect() {
         return this.client.quitAsync();
-    }
-
-    getClient() {
-        if (this.client.connected) {
-            return this.client;
-        } else {
-            return null;
-        }
     }
 
     _setEvenHandlers(client) {
@@ -115,11 +105,18 @@ class RedisConnection {
         return this.client.sremAsync(key, member);
     }
 
+    lpush(key, value) {
+        return this.client.lpushAsync(key, value);
+    }
+
+    lpop(key) {
+        return this.client.lpopAsync(key);
+    }
+
     subscribe(channelName, cb) {
         return this.client.subscribeAsync(channelName).then(() => {
             this.client.on('message', (channel, message) => {
                 if (channel === channelName) {
-                    console.log("sub channel " + channel + ": " + message);
                     cb(message);
                 }
             });
@@ -131,6 +128,4 @@ class RedisConnection {
     }
 }
 
-module.exports = new RedisConnection(logger, config.get('redis.connectionUrl'),
-    config.get('redis.maxReconnectionTimes'), config.get('redis.maxIntervalCountToCheckConnection'),
-    config.get('redis.intervalTimeToCheckConnection'));
+module.exports = RedisConnection;

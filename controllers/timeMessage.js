@@ -1,7 +1,8 @@
 'use strict';
 
-const RedisDao = require('../daos').Redis;
 const schedule = require('node-schedule');
+
+const RedisDao = require('../daos').Redis;
 
 class TimeMessageController {
     constructor(options = {}) {

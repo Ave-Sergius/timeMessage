@@ -3,8 +3,10 @@
 const config = require('config');
 const redis = require('redis');
 const bluebird = require('bluebird');
+
 bluebird.promisifyAll(redis.RedisClient.prototype);
 bluebird.promisifyAll(redis.Multi.prototype);
+
 const errors = require('../errors');
 const logger = require('../helpers').logger;
 
@@ -18,13 +20,14 @@ class RedisDao {
 
         this.client = redis.createClient({
             url: this.dbConnectionUrl,
-            retry_strategy: options => {
-                if (options.error.code === 'ECONNREFUSED') {
+            retry_strategy: strategyOptions => {
+                if (strategyOptions.error.code === 'ECONNREFUSED') {
                     return new errors.BaseError(options.error.message);
                 }
 
-                if (options.times_connected > (this.maxReconnectionTimes || +Infinity)) {
-                    return new errors.BaseError(`Redis connection error, Max time of reconnection ${options.times_connected}`);
+                if (strategyOptions.times_connected > (this.maxReconnectionTimes || +Infinity)) {
+                    const timesConnected = strategyOptions.times_connected;
+                    return new errors.BaseError(`Redis connection error, Max time of reconnection ${timesConnected}`);
                 }
 
                 return Math.min(options.attempt * 100, 3000);

@@ -12,7 +12,7 @@ App default port 3000. Redis port: 6379
 
 To change these settings: ./config/default.json
 
-**Routes**
+**Routes:**
 
 POST /echoAtTime;
 payload: 
